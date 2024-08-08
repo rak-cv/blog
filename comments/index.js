@@ -10,26 +10,33 @@ app.use(cors());
 
 const commentsByPostId = {};
 
-app.get("/posts/:id/comments", (req, res) => {
-  res.send(commentsByPostId[req.params.id] || []);
+// Update GET endpoint to use query parameters
+app.get("/posts/comments", (req, res) => {
+  const { postId } = req.query;
+  res.send(commentsByPostId[postId] || []);
 });
 
-app.post("/posts/:id/comments", async (req, res) => {
+// Update POST endpoint to read id from the request body
+app.post("/posts/comments", async (req, res) => {
   const commentId = randomBytes(4).toString("hex");
-  const { content } = req.body;
+  const { postId, content } = req.body;
 
-  const comments = commentsByPostId[req.params.id] || [];
+  if (!postId || !content) {
+    return res.status(400).send({ error: "PostId and content are required." });
+  }
+
+  const comments = commentsByPostId[postId] || [];
 
   comments.push({ id: commentId, content, status: "pending" });
 
-  commentsByPostId[req.params.id] = comments;
+  commentsByPostId[postId] = comments;
 
   await axios.post("http://localhost:4005/events", {
     type: "CommentCreated",
     data: {
       id: commentId,
       content,
-      postId: req.params.id,
+      postId,
       status: "pending",
     },
   });
